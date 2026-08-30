@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import os
+import re
 import sys
 import json
+import logging
 import hashlib
 import pathlib
 from typing import Optional, List, Dict, Any
@@ -10,12 +12,16 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
+import pyperclip
 from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
 from rich.markdown import Markdown
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
+
+# Fix 1: Suppress Google GenAI AFC recommendation and log warnings
+logging.getLogger("google_genai").setLevel(logging.ERROR)
 
 # Project-level isolated paths
 BASE_DIR = pathlib.Path(__file__).parent.resolve()
@@ -29,10 +35,38 @@ CACHE_DIR.mkdir(exist_ok=True)
 
 console = Console()
 
+
+def format_terminal_latex(text: str) -> str:
+    """Fix 3: Replaces raw LaTeX syntax with readable terminal-friendly math symbols."""
+    replacements = {
+        r'\mathcal{P}': '𝒫',
+        r'\mathbb{R}^3': 'ℝ³',
+        r'\in': '∈',
+        r'\det': 'det',
+        r'\times': '×',
+        r'\cdot': '·',
+        r'\vec': '⃗',
+        r'\to': '→',
+        r'\implies': '⇒',
+        r'\phi': 'ϕ',
+        r'\Phi': 'Φ',
+        r'\epsilon': 'ε',
+        r'\partial': '∂',
+        r'\nabla': '∇',
+    }
+    for latex, unicode_sym in replacements.items():
+        text = text.replace(latex, unicode_sym)
+    
+    text = re.sub(r'\\begin\{.*?\}(.*?)\\end\{.*?\}', r'\1', text, flags=re.DOTALL)
+    text = re.sub(r'\\pmatrix\{(.*?)\}', r'[\1]', text)
+    return text
+
+
 class PhysicsPipeline:
     def __init__(self, session_name: str = "default"):
         self.session_name = session_name
         self.session_file = HISTORY_DIR / f"{session_name}.json"
+        self.last_response: str = ""
         
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
@@ -80,7 +114,6 @@ class PhysicsPipeline:
             console.print(f"[bold red]Invalid directory:[/bold red] {dir_path}")
             return ""
 
-        # Check cache for codebase snapshot
         all_files = sorted([f for f in p.rglob("*") if f.suffix in exts and f.is_file()])
         mtimes = "".join([f"{f}:{f.stat().st_mtime}" for f in all_files])
         cache_file = self._get_cache_path(str(p) + mtimes)
@@ -122,13 +155,11 @@ class PhysicsPipeline:
             "highlight core physical assumptions, and give optimized code setups."
         )
 
-        # Build request payload with system instructions
         config = types.GenerateContentConfig(
             system_instruction=sys_instruction,
             temperature=0.2
         )
 
-        # Assembly of memory context
         full_context = []
         for msg in self.history:
             full_context.append(f"{msg['role'].capitalize()}: {msg['content']}")
@@ -136,22 +167,34 @@ class PhysicsPipeline:
 
         contents.extend(full_context)
 
-        # Streaming Response Block
         full_response = ""
-        console.print("\n[bold magenta]Gemini:[/bold magenta]")
+        console.print("\n[bold magenta]Fermi:[/bold magenta]")
         
         try:
-            response_stream = self.client.models.generate_content_stream(
-                model=self.model_name,
-                contents=contents,
-                config=config
-            )
+            # Fix 2: Display spinner while initiating generation
+            with console.status("[bold cyan]Fermi is thinking...", spinner="dots"):
+                response_stream = self.client.models.generate_content_stream(
+                    model=self.model_name,
+                    contents=contents,
+                    config=config
+                )
+                first_chunk = next(response_stream, None)
 
+            # Stream processing logic
             with Live(Markdown(""), console=console, refresh_per_second=12) as live:
+                chunks = [first_chunk] if first_chunk else []
+                for chunk in chunks:
+                    if chunk and chunk.text:
+                        full_response += chunk.text
+                        live.update(Markdown(format_terminal_latex(full_response)))
+
                 for chunk in response_stream:
                     if chunk.text:
                         full_response += chunk.text
-                        live.update(Markdown(full_response))
+                        # Fix 3: Process text with LaTeX formatter before Markdown render
+                        live.update(Markdown(format_terminal_latex(full_response)))
+
+            self.last_response = full_response
 
             # Update history after successful stream
             self.history.append({"role": "user", "content": prompt})
@@ -171,7 +214,7 @@ def main():
     pipeline = PhysicsPipeline(session_name=session_name)
 
     console.print(f"[bold green]Active Session:[/bold green] {session_name}")
-    console.print("[dim]Commands: '/attach <path>' | '/dir <path>' | 'exit'[/dim]\n")
+    console.print("[dim]Commands: '/attach <path>' | '/dir <path>' | '/copy' | 'exit'[/dim]\n")
 
     queued_attach = None
     queued_dir = None
@@ -185,6 +228,15 @@ def main():
             if user_input.lower() in ["exit", "quit"]:
                 console.print("[yellow]Saved session state. Exiting.[/yellow]")
                 break
+
+            # Manual copy via command only
+            if user_input.lower() == "/copy":
+                if pipeline.last_response:
+                    pyperclip.copy(pipeline.last_response)
+                    console.print("[green]✓ Copied last response to clipboard as raw Markdown.[/green]")
+                else:
+                    console.print("[yellow]No response available to copy yet.[/yellow]")
+                continue
 
             if user_input.startswith("/attach "):
                 queued_attach = user_input.split("/attach ", 1)[1].strip()

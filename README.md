@@ -1,16 +1,18 @@
 # Fermi
 
-**Fermi** is a lightweight, high-performance command-line study assistant built specifically for undergraduate physics workflows. Powered by the **Google Gemini 2.5 Flash API**, it provides real-time response streaming, session-based conversation persistence, directory/codebase snapshot caching, and native file attachments for research papers, diagrams, and problem sets.
+**Fermi** is a lightweight, high-performance command-line study assistant built specifically for undergraduate physics workflows. Powered by the **Google Gemini 3.6 Flash API**, it provides real-time response streaming, session-based conversation persistence, directory/codebase snapshot caching, custom terminal LaTeX rendering, and native file attachments for research papers, diagrams, and problem sets.
 
 ---
 
 ## Key Features
 
-* **Real-Time Streaming Output:** Generates instant live terminal responses with full Markdown and LaTeX math support (`$...$` or `$$...$$`).
-* **Isolated Environment:** Entirely self-contained—all dependencies, chat histories, command-line memory, and snapshot caches live within the project root.
+* **Real-Time Streaming Output:** Generates instant live terminal responses with standard Markdown and custom LaTeX rendering for inline and block equations.
+* **Non-Intrusive Terminal UI:** Features an animated thinking spinner while waiting for initial API chunks and completely suppresses SDK setup/warning logs.
+* **On-Demand Response Copying:** Keep your clipboard clean during normal use, or use `/copy` to instantly capture the last generated response as raw Markdown.
+* **Isolated Environment:** Entirely self-contained—dependencies, chat histories, command-line memory, and snapshot caches live within the project root.
 * **Persistent Session Memory:** Organize discussions into named topics (e.g., `quantum_hw2`, `mechanics_lab`). Sessions persist across terminal restarts.
 * **Codebase & Directory Indexing:** Supply entire code repositories (`.py`, `.cpp`, `.tex`, etc.) for immediate analysis with automated change-detection caching.
-* **Multimodal File Support:** Upload PDFs, images, circuit paths, and data files via Gemini's File API.
+* **Multimodal File Support:** Upload PDFs, images, circuit diagrams, and data files via Gemini's File API.
 * **System Global Command:** Access Fermi instantly from any directory using the `fermi` command.
 
 ---
@@ -67,6 +69,17 @@ chmod +x run.sh
 
 ```
 
+Ensure your `requirements.txt` contains:
+
+```text
+google-genai
+python-dotenv
+rich
+prompt_toolkit
+pyperclip
+
+```
+
 ### 4. Global Alias Setup
 
 To run `fermi` from any folder in your terminal, add an alias to your shell profile (`~/.zshrc` or `~/.bashrc`):
@@ -103,41 +116,20 @@ Session name (default: 'main_study'): quantum_mechanics
 | --- | --- | --- |
 | `/attach <file_path>` | `/attach ./lab_report.pdf` | Queues a file (PDF, image, data file) to send with your next prompt. |
 | `/dir <dir_path>` | `/dir ./src/simulation` | Queues an entire directory to index into context with your next prompt. |
+| `/copy` | `/copy` | Copies the last assistant response to the system clipboard as raw Markdown. |
 | `exit` / `quit` | `exit` | Saves the session state to `history/` and closes the application. |
-
-### Example Workflow
-
-```text
-[You] > /attach problem_set_3.pdf
-Queued attachment: problem_set_3.pdf
-
-[You] > Solve Problem 2(b) step-by-step and write out the explicit Hamiltonian derivation.
-
-```
-
-```text
-[You] > /dir ./stochastic_sim
-Queued directory: ./stochastic_sim
-
-[You] > Analyze my Python integration loop inside solver.py and suggest performance optimizations.
-
-```
 
 ---
 
 ## Architecture & Development Details
 
-* **Engine:** Built on the official `google-genai` SDK using `gemini-2.5-flash`.
-* **Streaming & UI:** Leverages `rich.live.Live` and `rich.markdown.Markdown` for smooth output rendering at 12 refreshes/second.
+* **Engine:** Built on the official `google-genai` SDK using `gemini-3.6-flash`.
+* **Streaming & UI Mechanics:**
+* Uses `rich.status.Status` for a non-blocking initial response spinner.
+* Uses `rich.live.Live` and `rich.markdown.Markdown` for output rendering at 12 refreshes/second.
+* Overrides `google_genai` logger severity to suppress AFC warnings during output execution.
+
+
+* **Terminal Math Preprocessor:** Converts raw LaTeX constructs ($\nabla$, $\mathcal{P}$, $\mathbb{R}^3$, matrices, etc.) into clean Unicode symbols before standard Markdown parsing.
 * **Caching Strategy:** The `read_directory()` function generates SHA-256 hashes based on absolute paths and modification times (`st_mtime`). Repeated queries on unmodified directories load instantly from `cache/`.
 * **Prompt UI:** Implements `prompt_toolkit` to handle multiline inputs and persistent terminal command history.
-
----
-
-## Modifying & Extending
-
-To customize system instructions or alter default parameters, edit `main.py`:
-
-* **Change System Persona:** Update `sys_instruction` inside `PhysicsPipeline.stream_query()`.
-* **Adjust Model Generation:** Modify `types.GenerateContentConfig(temperature=0.2)` to adjust creativity or precision.
-* **File Extensions:** Extend the supported extensions list in `read_directory()` to include custom file types.
