@@ -1,0 +1,15 @@
+# Virtual environment
+venv/
+.venv/
+env/
+.env
+*.env
+
+# Cache & local pipeline files
+cache/
+history/
+.prompt_history
+
+# Python bytecode
+__pycache__/
+*.py[cod]
