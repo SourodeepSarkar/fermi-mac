@@ -163,7 +163,7 @@ class PhysicsPipeline:
 
 
 def main():
-    console.print(Panel.fit("[bold blue]Physics AI Pipeline (Gemini 2.5 Flash Engine)[/bold blue]\n[dim]Isolated Environment & Fast Response Streaming[/dim]"))
+    console.print(Panel.fit("[bold blue]Fermi AI Pipeline (Gemini 3.6 Flash Engine)[/bold blue]\n[dim]Isolated Environment & Fast Response Streaming[/dim]"))
 
     session_prompt = PromptSession(history=FileHistory(str(PROMPT_HIST_FILE)))
     
