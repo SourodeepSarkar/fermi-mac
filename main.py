@@ -40,7 +40,7 @@ class PhysicsPipeline:
             sys.exit(1)
 
         self.client = genai.Client(api_key=api_key)
-        self.model_name = "gemini-2.5-flash"
+        self.model_name = "gemini-3.6-flash"
         self.history: List[Dict[str, str]] = self._load_history()
 
     def _load_history(self) -> List[Dict[str, str]]:
