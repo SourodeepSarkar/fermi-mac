@@ -1,0 +1,6 @@
+{
+  "model": "gemini-3.6-flash",
+  "temperature": 0.3,
+  "web_search": false,
+  "code_execution": false
+}
