@@ -1,135 +1,138 @@
+<div align="center">
+
+<img src="./assets/fermi-icon.png" width="120" alt="Fermi icon" />
+
 # Fermi
 
-**Fermi** is a lightweight, high-performance command-line study assistant built specifically for undergraduate physics workflows. Powered by the **Google Gemini 3.6 Flash API**, it provides real-time response streaming, session-based conversation persistence, directory/codebase snapshot caching, custom terminal LaTeX rendering, and native file attachments for research papers, diagrams, and problem sets.
+**A lightweight macOS app for undergraduate physics, powered by Google Gemini.**
+
+[![Latest Release](https://img.shields.io/github/v/release/SourodeepSarkar/fermi?label=latest%20release)](https://github.com/SourodeepSarkar/fermi/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/SourodeepSarkar/fermi/total)](https://github.com/SourodeepSarkar/fermi/releases)
+[![macOS](https://img.shields.io/badge/macOS-13%2B-black?logo=apple)](https://github.com/SourodeepSarkar/fermi/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE.md)
+
+[Download](#download) · [Setup](#first-launch-setup) · [Usage](#using-fermi) · [FAQ](#faq) · [Uninstall](#uninstalling)
+
+</div>
 
 ---
 
-## Key Features
+## What is Fermi?
 
-* **Real-Time Streaming Output:** Generates instant live terminal responses with standard Markdown and custom LaTeX rendering for inline and block equations.
-* **Non-Intrusive Terminal UI:** Features an animated thinking spinner while waiting for initial API chunks and completely suppresses SDK setup/warning logs.
-* **On-Demand Response Copying:** Keep your clipboard clean during normal use, or use `/copy` to instantly capture the last generated response as raw Markdown.
-* **Isolated Environment:** Entirely self-contained—dependencies, chat histories, command-line memory, and snapshot caches live within the project root.
-* **Persistent Session Memory:** Organize discussions into named topics (e.g., `quantum_hw2`, `mechanics_lab`). Sessions persist across terminal restarts.
-* **Codebase & Directory Indexing:** Supply entire code repositories (`.py`, `.cpp`, `.tex`, etc.) for immediate analysis with automated change-detection caching.
-* **Multimodal File Support:** Upload PDFs, images, circuit diagrams, and data files via Gemini's File API.
-* **System Global Command:** Access Fermi instantly from any directory using the `fermi` command.
+Fermi is a small macOS menu-bar-less **agent app** that sets up and launches a command-line study assistant for undergraduate physics. It walks you through a one-time setup — checking your Mac, downloading the engine, connecting a free Google Gemini API key, and (optionally) adding a `fermi` command to your terminal — then drops you straight into a fast, distraction-free chat interface in Terminal.
 
----
+This repository hosts **pre-built releases of the Fermi.app** you can download and run directly — no Xcode, no building from source required. The application source lives in a separate repository; see [How it works](#how-it-works) below.
 
-## Project Structure
+**Highlights**
 
-```text
-fermi/
-├── .env                  # Secret API key configuration (git-ignored)
-├── .gitignore            # Git exclusion rules
-├── .prompt_history       # Command-line input history (git-ignored)
-├── cache/                # Codebase snapshot hashes (git-ignored)
-├── history/              # Saved chat session JSONs (git-ignored)
-├── main.py               # Core application logic & pipeline engine
-├── requirements.txt      # Python dependencies
-├── run.sh                # Executable wrapper & environment activator
-└── venv/                 # Isolated Python virtual environment (git-ignored)
-
-```
+- 🧠 Real-time streaming answers from Google's Gemini models, with rigorous derivations and LaTeX rendered cleanly in the terminal.
+- 📎 Attach PDFs, images, problem sets, or entire code directories for context-aware help.
+- 💬 Persistent, named study sessions that survive terminal restarts.
+- ⚡️ A guided, macOS-native setup — no manual `pip install`, no editing config files by hand.
+- 🔒 Your API key is stored locally in a `.env` file on your own Mac. It is never sent anywhere except Google's API.
 
 ---
 
-## Setup & Installation
+## Download
 
-### 1. Prerequisites
+1. Go to the [**Releases**](https://github.com/SourodeepSarkar/fermi/releases/latest) page.
+2. Under **Assets**, download the latest `Fermi.app.zip` (or `Fermi.dmg`, if provided).
+3. Unzip it (double-click) and drag **Fermi.app** into your `/Applications` folder.
+4. Double-click **Fermi.app** to launch it.
 
-* Python 3.9 or higher
-* A Gemini API Key from [Google AI Studio](https://aistudio.google.com/)
+> **Requirements:** macOS 13 (Ventura) or later, an internet connection, and a free [Google AI Studio](https://aistudio.google.com/app/apikey) account for your API key.
 
-### 2. Environment Configuration
+### ⚠️ macOS says "Fermi can't be opened" or "unidentified developer"
 
-Clone or navigate into your local repository and set up the `.env` secret file:
+Fermi is distributed independently of the Mac App Store, so Gatekeeper may flag it on first launch. To open it anyway:
 
-```bash
-cd fermi
-echo 'GEMINI_API_KEY="your_actual_gemini_api_key_here"' > .env
+1. Right-click (or Control-click) **Fermi.app** and choose **Open**.
+2. Click **Open** again in the dialog that appears.
 
-```
-
-### 3. Installation
-
-Initialize the virtual environment and install dependencies:
-
-```bash
-# Create virtual environment
-python3 -m venv venv
-
-# Activate and install dependencies
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Make launcher executable
-chmod +x run.sh
-
-```
-
-Ensure your `requirements.txt` contains:
-
-```text
-google-genai
-python-dotenv
-rich
-prompt_toolkit
-pyperclip
-
-```
-
-### 4. Global Alias Setup
-
-To run `fermi` from any folder in your terminal, add an alias to your shell profile (`~/.zshrc` or `~/.bashrc`):
-
-```bash
-echo 'alias fermi="'"$(pwd)/run.sh"'"' >> ~/.zshrc
-source ~/.zshrc
-
-```
+You only need to do this once. If your Mac still blocks it, go to **System Settings → Privacy & Security**, scroll to the Security section, and click **Open Anyway** next to the Fermi message.
 
 ---
 
-## Usage Guide
+## First-Launch Setup
 
-### Starting Fermi
+The first time you open Fermi, it walks you through a short setup — the same style as macOS's own Setup Assistant:
 
-Run the global command from any directory:
+| Step | What happens |
+|---|---|
+| **Welcome** | A quick overview of what Fermi does. |
+| **System Check** | Confirms you're online and that `git` is installed. If `git` is missing, Fermi will ask permission to install the Xcode Command Line Tools for you. |
+| **Terms & License** | Shows the current MIT license for your review. |
+| **Download Fermi** | Fetches the Fermi engine into `~/Library/Application Support/Fermi`. |
+| **API Key** | Walks you through creating a free key at Google AI Studio and saves it locally to a `.env` file. |
+| **Command Line Access** | Optional: adds a `fermi` command to your terminal (`~/.zshrc`) so you can launch it from anywhere. |
+| **Finish** | Installs Python dependencies and opens your terminal, ready to go. |
+
+Every launch after that skips straight to a loading screen, silently checks for updates, and opens your terminal session — no re-setup needed.
+
+---
+
+## Using Fermi
+
+Once set up, Fermi opens a Terminal window running its CLI. A few commands to know:
+
+| Command | Description |
+|---|---|
+| `/attach <file_path>` | Queue a file (PDF, image, data file) to send with your next message. |
+| `/dir <dir_path>` | Queue an entire directory to index into context with your next message. |
+| `/copy` | Copy the last response to your clipboard as raw Markdown. |
+| `exit` / `quit` | Save your session and close. |
+
+If you enabled **Command Line Access** during setup, you can also start Fermi any time from any Terminal window by typing:
 
 ```bash
 fermi
-
 ```
-
-Upon launching, you will be prompted to supply a session name:
-
-```text
-Session name (default: 'main_study'): quantum_mechanics
-
-```
-
-### Interactive CLI Commands
-
-| Command | Usage | Description |
-| --- | --- | --- |
-| `/attach <file_path>` | `/attach ./lab_report.pdf` | Queues a file (PDF, image, data file) to send with your next prompt. |
-| `/dir <dir_path>` | `/dir ./src/simulation` | Queues an entire directory to index into context with your next prompt. |
-| `/copy` | `/copy` | Copies the last assistant response to the system clipboard as raw Markdown. |
-| `exit` / `quit` | `exit` | Saves the session state to `history/` and closes the application. |
 
 ---
 
-## Architecture & Development Details
+## How it works
 
-* **Engine:** Built on the official `google-genai` SDK using `gemini-3.6-flash`.
-* **Streaming & UI Mechanics:**
-* Uses `rich.status.Status` for a non-blocking initial response spinner.
-* Uses `rich.live.Live` and `rich.markdown.Markdown` for output rendering at 12 refreshes/second.
-* Overrides `google_genai` logger severity to suppress AFC warnings during output execution.
+Fermi.app is a native SwiftUI onboarding/launcher for a Python-based CLI engine. On first launch it clones the engine into `~/Library/Application Support/Fermi`; on every later launch it runs `git pull` to keep it current, then hands off to your terminal. Nothing is installed system-wide outside that one folder plus (optionally) a single alias line in your shell profile.
 
+- **This repo** — release builds of `Fermi.app` only.
+- **Engine repo** — the Python CLI source Fermi downloads and runs. *(link it here once published)*
 
-* **Terminal Math Preprocessor:** Converts raw LaTeX constructs ($\nabla$, $\mathcal{P}$, $\mathbb{R}^3$, matrices, etc.) into clean Unicode symbols before standard Markdown parsing.
-* **Caching Strategy:** The `read_directory()` function generates SHA-256 hashes based on absolute paths and modification times (`st_mtime`). Repeated queries on unmodified directories load instantly from `cache/`.
-* **Prompt UI:** Implements `prompt_toolkit` to handle multiline inputs and persistent terminal command history.
+---
+
+## FAQ
+
+**Where is my API key stored?**
+Locally, in `~/Library/Application Support/Fermi/.env`. Fermi never uploads it anywhere except directly to Google's Gemini API when you ask a question.
+
+**Does Fermi have a Dock icon?**
+No — Fermi runs as a lightweight background/agent app. Launch it from `/Applications`, Spotlight, or the `fermi` terminal command if you enabled it.
+
+**I don't have Git installed — do I need to install it myself?**
+No. If Fermi doesn't find `git` during setup, it will ask your permission and trigger Apple's own Xcode Command Line Tools installer for you.
+
+**Can I change my API key later?**
+Yes — open `~/Library/Application Support/Fermi/.env` in any text editor and replace the value, or delete the file and re-run Fermi's setup by resetting onboarding (see below).
+
+**Is my data used to train anything?**
+Fermi only sends your prompts and attachments to Google's Gemini API under your own key, subject to [Google's API terms](https://ai.google.dev/terms). Fermi itself collects nothing.
+
+---
+
+## Uninstalling
+
+1. Quit Fermi and drag `Fermi.app` out of `/Applications` to the Trash.
+2. Delete its data folder:
+   ```bash
+   rm -rf ~/Library/Application\ Support/Fermi
+   ```
+3. If you enabled the `fermi` command, remove the alias line from `~/.zshrc` (search for the line tagged `# Added by Fermi.app`).
+
+---
+
+## Reporting Issues
+
+Found a bug or have a feature request? Please [open an issue](https://github.com/SourodeepSarkar/fermi/issues) with your macOS version, Fermi version (from **About** or the release tag you downloaded), and steps to reproduce.
+
+## License
+
+Fermi is released under the [MIT License](./LICENSE.md).
